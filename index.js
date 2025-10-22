@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv')
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
+const roleRoutes = require('./routes/roleRoutes');
 
 dotenv.config()
 const app = express();
@@ -22,6 +23,7 @@ mongoose.connect(process.env.MONGODB_URI)
   // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/roles', roleRoutes);
 
   // Simple health check route
 app.get('/', (req, res) => {
