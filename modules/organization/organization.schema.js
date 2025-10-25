@@ -1,6 +1,13 @@
 const mongoose = require('mongoose');
 
 const OrganizationSchema = new mongoose.Schema({
+  organisation_id: {
+    type: String,
+    unique: true,
+    default: function() {
+      return new mongoose.Types.ObjectId().toString();
+    }
+  },
   name: {
     type: String,
     required: true,

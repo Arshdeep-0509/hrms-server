@@ -1,6 +1,13 @@
 const mongoose = require('mongoose');
 
 const RoleSchema = new mongoose.Schema({
+  role_id: {
+    type: String,
+    unique: true,
+    default: function() {
+      return new mongoose.Types.ObjectId().toString();
+    }
+  },
   name: {
     type: String,
     required: true,

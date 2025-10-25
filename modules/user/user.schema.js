@@ -15,6 +15,13 @@ const ROLES = [
 ];
 
 const UserSchema = new mongoose.Schema({
+  user_id: {
+    type: String,
+    unique: true,
+    default: function() {
+      return new mongoose.Types.ObjectId().toString();
+    }
+  },
   email: {
     type: String,
     required: true,
