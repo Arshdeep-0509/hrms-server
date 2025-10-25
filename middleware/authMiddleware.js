@@ -2,7 +2,7 @@
 // industry-level setup to protect routes based on the user's role after they log in.
 
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const User = require('../modules/user/user.schema');
 
 // Middleware to protect routes (Authentication)
 exports.protect = async (req, res, next) => {

@@ -1,4 +1,3 @@
-// models/Organization.js
 const mongoose = require('mongoose');
 
 const OrganizationSchema = new mongoose.Schema({
@@ -32,7 +31,7 @@ const OrganizationSchema = new mongoose.Schema({
     enum: ['Basic', 'Standard', 'Premium'],
     default: 'Basic',
   },
-  // Example for HR/Payroll Policy Settings (used in API 6)
+  // Example for HR/Payroll Policy Settings
   settings: {
     payrollCycle: {
       type: String,
@@ -48,3 +47,4 @@ const OrganizationSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model('Organization', OrganizationSchema);
+

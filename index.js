@@ -1,10 +1,10 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv')
-const authRoutes = require('./routes/authRoutes');
-const userRoutes = require('./routes/userRoutes');
-const roleRoutes = require('./routes/roleRoutes');
-const organizationRoutes = require('./routes/organizationRoutes');
+const authRoutes = require('./modules/auth/auth.routes');
+const userRoutes = require('./modules/user/user.routes');
+const roleRoutes = require('./modules/role/role.routes');
+const organizationRoutes = require('./modules/organization/organization.routes');
 
 dotenv.config()
 const app = express();
