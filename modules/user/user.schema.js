@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+
 const ROLES = [
   'Super Admin',
   'Client Admin',
@@ -14,8 +15,7 @@ const ROLES = [
 ];
 
 const UserSchema = new mongoose.Schema({
-
-email: {
+  email: {
     type: String,
     required: true,
     unique: true,
@@ -39,10 +39,7 @@ email: {
     type: String,
     required: true
   }
-
-
-},{ timestamps: true })
-
+}, { timestamps: true });
 
 // Pre-save hook to hash password (Optimization: use a common salt round count)
 UserSchema.pre('save', async function(next) {
@@ -65,3 +62,4 @@ UserSchema.methods.matchPassword = async function(enteredPassword) {
 };
 
 module.exports = mongoose.model('User', UserSchema);
+
