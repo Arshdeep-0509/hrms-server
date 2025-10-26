@@ -41,6 +41,7 @@ class OrganizationController {
   /**
    * Get organization details
    * Accessible by: Super Admin, Client Admin (if it's their organization)
+   * Accepts: organization _id or organization_id
    */
   async getOrganizationDetails(req, res) {
     try {
@@ -55,6 +56,7 @@ class OrganizationController {
   /**
    * Update client info
    * Accessible by: Super Admin
+   * Accepts: organization _id or organization_id
    */
   async updateOrganization(req, res) {
     try {
@@ -69,6 +71,7 @@ class OrganizationController {
   /**
    * Delete organization
    * Accessible by: Super Admin
+   * Accepts: organization _id or organization_id
    */
   async deleteOrganization(req, res) {
     try {
@@ -83,6 +86,7 @@ class OrganizationController {
   /**
    * Configure HR/payroll policies
    * Accessible by: Client Admin
+   * Accepts: organization _id or organization_id
    */
   async configurePolicies(req, res) {
     try {
@@ -98,6 +102,7 @@ class OrganizationController {
   /**
    * Assign HR Account Manager
    * Accessible by: Super Admin
+   * Accepts: organization _id or organization_id
    */
   async assignAccountManager(req, res) {
     try {
@@ -107,6 +112,22 @@ class OrganizationController {
     } catch (error) {
       const statusCode = error.statusCode || 500;
       res.status(statusCode).json({ message: error.message || 'Server error during manager assignment' });
+    }
+  }
+
+  /**
+   * Assign Client Admin
+   * Accessible by: Super Admin
+   * Accepts: organization _id or organization_id
+   */
+  async assignClientAdmin(req, res) {
+    try {
+      const { adminId } = req.body;
+      const result = await organizationService.assignClientAdmin(req.params.id, adminId);
+      res.json(result);
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      res.status(statusCode).json({ message: error.message || 'Server error during client admin assignment' });
     }
   }
 }
