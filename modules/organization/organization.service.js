@@ -81,7 +81,6 @@ class OrganizationService {
    * @returns {Promise<Object>} Organization details
    */
   async getOrganizationDetails(organizationId, user) {
-    const organization = await Organization.findById(organizationId);
     let query;
     try {
       query = this._buildIdQuery(organizationId);
