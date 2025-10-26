@@ -14,14 +14,12 @@ const OrganizationSchema = new mongoose.Schema({
   },
   clientAdmin: {
     // Reference to the User who is the main admin for this organization
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    type: String,
     required: false, // Optional initially, can be assigned later
   },
   hrAccountManager: {
     // Reference to the HR Account Manager assigned to this client
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    type: String,
     required: false,
   },
   address: {
@@ -46,7 +44,9 @@ const OrganizationSchema = new mongoose.Schema({
       default: 15,
     },
   }
-}, { timestamps: true });
+}, { 
+  timestamps: true
+});
 
 // Auto-generate organization_id before saving
 OrganizationSchema.pre('save', async function(next) {

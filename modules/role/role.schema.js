@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
+const Counter = require('../../models/counter.model');
 
 const RoleSchema = new mongoose.Schema({
+  role_id: {
+    type: Number,
+    unique: true
+  },
   name: {
     type: String,
     required: true,
@@ -17,7 +22,29 @@ const RoleSchema = new mongoose.Schema({
       'role:manage'                             // Role management
     ]
   }]
-}, { timestamps: true });
+}, { 
+  timestamps: true,
+  _id: false  // Disable default _id field
+});
+
+// Pre-save hook to generate auto-incrementing role_id
+RoleSchema.pre('save', async function(next) {
+  if (!this.isNew) {
+    return next();
+  }
+  
+  try {
+    const counter = await Counter.findByIdAndUpdate(
+      { _id: 'role_id' },
+      { $inc: { sequence_value: 1 } },
+      { new: true, upsert: true }
+    );
+    this.role_id = counter.sequence_value;
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 module.exports = mongoose.model('Role', RoleSchema);
 

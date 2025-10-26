@@ -57,7 +57,7 @@ class RoleService {
     );
 
     // 2. User Role Update Logic (User Schema)
-    const user = await User.findById(userId);
+    const user = await User.findOne({ user_id: userId });
 
     if (!user) {
       throw { statusCode: 404, message: 'User not found.' };
@@ -70,7 +70,7 @@ class RoleService {
 
     return {
       message: `Role successfully updated from ${oldRole} to ${roleName} for user ${user.email}. Role permissions definition was also updated/created.`,
-      user: { id: user._id, role: user.role }
+      user: { id: user.user_id, role: user.role }
     };
   }
 

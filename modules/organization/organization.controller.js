@@ -91,7 +91,7 @@ class OrganizationController {
   async configurePolicies(req, res) {
     try {
       const { settings } = req.body;
-      const result = await organizationService.configurePolicies(req.params.id, settings, req.user.id);
+      const result = await organizationService.configurePolicies(req.params.id, settings, req.user.user_id);
       res.json(result);
     } catch (error) {
       const statusCode = error.statusCode || 500;

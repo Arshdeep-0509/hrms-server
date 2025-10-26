@@ -65,11 +65,11 @@ class AuthService {
     }
 
     // 5. Generate token
-    const token = this.generateToken(user._id, user.role);
+    const token = this.generateToken(user.user_id, user.role);
 
     return {
       message: 'Registration successful, and role permissions initialized.',
-      _id: user._id,
+      user_id: user.user_id,
       name: user.name,
       email: user.email,
       role: user.role,
@@ -94,11 +94,11 @@ class AuthService {
     }
 
     // 3. Generate token
-    const token = this.generateToken(user._id, user.role);
+    const token = this.generateToken(user.user_id, user.role);
 
     return {
       message: 'Login successful',
-      _id: user._id,
+      user_id: user.user_id,
       name: user.name,
       email: user.email,
       role: user.role,
