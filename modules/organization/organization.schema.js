@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const OrganizationSchema = new mongoose.Schema({
+  organization_id: {
+    type: Number,
+    required: true,
+    unique: true,
+  },
   name: {
     type: String,
     required: true,
@@ -23,13 +28,11 @@ const OrganizationSchema = new mongoose.Schema({
     zipCode: String,
     country: String,
   },
-  // Example for client-specific configurations
   subscriptionPlan: {
     type: String,
     enum: ['Basic', 'Standard', 'Premium'],
     default: 'Basic',
   },
-  // Example for HR/Payroll Policy Settings
   settings: {
     payrollCycle: {
       type: String,
@@ -40,10 +43,22 @@ const OrganizationSchema = new mongoose.Schema({
       type: Number, // days per year
       default: 15,
     },
-    // Add other relevant policies here
   }
 }, { 
   timestamps: true
+});
+
+// Auto-generate organization_id before saving
+OrganizationSchema.pre('save', async function(next) {
+  if (this.isNew && !this.organization_id) {
+    try {
+      const lastOrg = await this.constructor.findOne({}, {}, { sort: { organization_id: -1 } });
+      this.organization_id = lastOrg ? lastOrg.organization_id + 1 : 1;
+    } catch (error) {
+      return next(error);
+    }
+  }
+  next();
 });
 
 module.exports = mongoose.model('Organization', OrganizationSchema);
