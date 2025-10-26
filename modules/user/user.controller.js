@@ -7,7 +7,7 @@ class UserController {
    */
   async getUserProfile(req, res) {
     try {
-      const profile = await userService.getUserProfile(req.user.id);
+      const profile = await userService.getUserProfile(req.user.user_id);
       res.json(profile);
     } catch (error) {
       const statusCode = error.statusCode || 500;
@@ -21,7 +21,7 @@ class UserController {
    */
   async updateUserProfile(req, res) {
     try {
-      const updatedProfile = await userService.updateUserProfile(req.user.id, req.body);
+      const updatedProfile = await userService.updateUserProfile(req.user.user_id, req.body);
       res.json(updatedProfile);
     } catch (error) {
       const statusCode = error.statusCode || 500;
@@ -35,7 +35,7 @@ class UserController {
    */
   async deleteUser(req, res) {
     try {
-      const result = await userService.deleteUser(req.params.id);
+      const result = await userService.deleteUser(req.params.user_id);
       res.json(result);
     } catch (error) {
       console.error('Delete User Error:', error);

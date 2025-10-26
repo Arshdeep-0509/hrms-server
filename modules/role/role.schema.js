@@ -24,7 +24,10 @@ const RoleSchema = new mongoose.Schema({
       'role:manage'                             // Role management
     ]
   }]
-}, { timestamps: true });
+}, { 
+  timestamps: true,
+  _id: false  // Disable default _id field
+});
 
 module.exports = mongoose.model('Role', RoleSchema);
 

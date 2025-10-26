@@ -10,9 +10,7 @@ class OrganizationService {
   async listOrganizations(user) {
     // Client Admin should only see their own organization
     if (user.role === 'Client Admin') {
-      const organization = await Organization.findOne({ clientAdmin: user.id })
-        .populate('clientAdmin', 'name email')
-        .populate('hrAccountManager', 'name email');
+      const organization = await Organization.findOne({ clientAdmin: user.user_id });
 
       if (organization) {
         return [organization];
@@ -22,9 +20,7 @@ class OrganizationService {
     }
 
     // Super Admin or Client Manager sees all organizations
-    return await Organization.find({})
-      .populate('clientAdmin', 'name email')
-      .populate('hrAccountManager', 'name email');
+    return await Organization.find({});
   }
 
   /**
@@ -61,16 +57,14 @@ class OrganizationService {
    * @returns {Promise<Object>} Organization details
    */
   async getOrganizationDetails(organizationId, user) {
-    const organization = await Organization.findById(organizationId)
-      .populate('clientAdmin', 'name email')
-      .populate('hrAccountManager', 'name email');
+    const organization = await Organization.findById(organizationId);
 
     if (!organization) {
       throw { statusCode: 404, message: 'Organization not found' };
     }
 
     // Authorization check for Client Admin: must be their organization
-    if (user.role === 'Client Admin' && organization.clientAdmin?.toString() !== user.id) {
+    if (user.role === 'Client Admin' && organization.clientAdmin !== user.user_id) {
       throw { statusCode: 403, message: 'Forbidden: You do not manage this organization.' };
     }
 
@@ -138,7 +132,7 @@ class OrganizationService {
     }
 
     // Authorization check: Must be the Client Admin for this organization
-    if (organization.clientAdmin?.toString() !== userId) {
+    if (organization.clientAdmin !== userId) {
       throw { statusCode: 403, message: 'Forbidden: You must be the assigned Client Admin to configure policies.' };
     }
 
@@ -164,7 +158,7 @@ class OrganizationService {
     }
 
     // Validate if the user being assigned is actually an 'HR Account Manager'
-    const manager = await User.findById(managerId);
+    const manager = await User.findOne({ user_id: managerId });
     if (!manager || manager.role !== 'HR Account Manager') {
       throw { statusCode: 400, message: 'Invalid or unauthorized user ID provided. Must be an HR Account Manager.' };
     }

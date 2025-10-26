@@ -46,7 +46,10 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: true
   }
-}, { timestamps: true });
+}, { 
+  timestamps: true,
+  _id: false  // Disable default _id field
+});
 
 // Pre-save hook to hash password (Optimization: use a common salt round count)
 UserSchema.pre('save', async function(next) {
