@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const Counter = require('../../models/counter.model');
 
 const ROLES = [
   'Super Admin',
@@ -15,6 +16,10 @@ const ROLES = [
 ];
 
 const UserSchema = new mongoose.Schema({
+  user_id: {
+    type: Number,
+    unique: true
+  },
   email: {
     type: String,
     required: true,
@@ -39,20 +44,38 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: true
   }
-}, { timestamps: true });
+}, { 
+  timestamps: true,
+  _id: false  // Disable default _id field
+});
 
-// Pre-save hook to hash password (Optimization: use a common salt round count)
+// Pre-save hook to handle both ID generation and password hashing
 UserSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) {
-    return next();
+  // Generate auto-incrementing user_id for new documents
+  if (this.isNew && !this.user_id) {
+    try {
+      const counter = await Counter.findByIdAndUpdate(
+        'user_id',
+        { $inc: { sequence_value: 1 } },
+        { new: true, upsert: true, lean: true }
+      );
+      this.user_id = counter.sequence_value;
+    } catch (error) {
+      return next(error);
+    }
   }
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (err) {
-    next(err);
+
+  // Hash password if it's been modified
+  if (this.isModified('password')) {
+    try {
+      const salt = await bcrypt.genSalt(8); // Reduced from 10 to 8 for better performance
+      this.password = await bcrypt.hash(this.password, salt);
+    } catch (err) {
+      return next(err);
+    }
   }
+  
+  next();
 });
 
 // Instance method to compare password

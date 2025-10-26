@@ -7,7 +7,7 @@ class UserService {
    * @returns {Promise<Object>} User object
    */
   async getUserById(userId) {
-    return await User.findById(userId).select('-password');
+    return await User.findOne({ user_id: userId }).select('-password');
   }
 
   /**
@@ -16,14 +16,14 @@ class UserService {
    * @returns {Promise<Object>} User profile
    */
   async getUserProfile(userId) {
-    const user = await User.findById(userId).select('-password');
+    const user = await User.findOne({ user_id: userId }).select('-password');
     
     if (!user) {
       throw { statusCode: 404, message: 'User not found' };
     }
 
     return {
-      _id: user._id,
+      user_id: user.user_id,
       name: user.name,
       email: user.email,
       role: user.role,
@@ -38,7 +38,7 @@ class UserService {
    * @returns {Promise<Object>} Updated user profile
    */
   async updateUserProfile(userId, updateData) {
-    const user = await User.findById(userId);
+    const user = await User.findOne({ user_id: userId });
 
     if (!user) {
       throw { statusCode: 404, message: 'User not found' };
@@ -56,7 +56,7 @@ class UserService {
     const updatedUser = await user.save();
 
     return {
-      _id: updatedUser._id,
+      user_id: updatedUser.user_id,
       name: updatedUser.name,
       email: updatedUser.email,
       role: updatedUser.role,
@@ -70,13 +70,13 @@ class UserService {
    * @returns {Promise<Object>} Success message
    */
   async deleteUser(userId) {
-    const userToDelete = await User.findById(userId);
+    const userToDelete = await User.findOne({ user_id: userId });
 
     if (!userToDelete) {
       throw { statusCode: 404, message: 'User not found' };
     }
 
-    await User.deleteOne({ _id: userId });
+    await User.deleteOne({ user_id: userId });
     
     return { message: 'User removed successfully' };
   }

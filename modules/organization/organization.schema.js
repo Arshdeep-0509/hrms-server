@@ -9,14 +9,12 @@ const OrganizationSchema = new mongoose.Schema({
   },
   clientAdmin: {
     // Reference to the User who is the main admin for this organization
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    type: String,
     required: false, // Optional initially, can be assigned later
   },
   hrAccountManager: {
     // Reference to the HR Account Manager assigned to this client
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    type: String,
     required: false,
   },
   address: {
@@ -44,7 +42,9 @@ const OrganizationSchema = new mongoose.Schema({
     },
     // Add other relevant policies here
   }
-}, { timestamps: true });
+}, { 
+  timestamps: true
+});
 
 module.exports = mongoose.model('Organization', OrganizationSchema);
 
