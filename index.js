@@ -9,6 +9,7 @@ const financeRoutes = require('./modules/finance/finance.routes');
 const recruitmentRoutes = require('./modules/recruitment/recruitment.routes');
 const employeeRoutes = require('./modules/employee/employee.routes');
 const payrollRoutes = require('./modules/payroll/payroll.routes');
+const departmentRoutes = require('./modules/department/department.routes');
 
 dotenv.config()
 const app = express();
@@ -34,6 +35,7 @@ app.use('/api/finance', financeRoutes);
 app.use('/api/recruitment', recruitmentRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/payroll', payrollRoutes);
+app.use('/api/departments', departmentRoutes);
 
   // Simple health check route
 app.get('/', (req, res) => {
