@@ -17,6 +17,25 @@ class FinanceController {
   }
 
   /**
+   * Get transaction by ID
+   * Accessible by: Bookkeeper / Super Admin
+   */
+  async getTransaction(req, res) {
+    try {
+      const transactionId = parseInt(req.params.transaction_id);
+      if (isNaN(transactionId)) {
+        return res.status(400).json({ message: 'Invalid transaction ID' });
+      }
+      const transaction = await financeService.getTransaction(transactionId, req.user);
+      res.json(transaction);
+    } catch (error) {
+      console.error('Error fetching transaction:', error);
+      const statusCode = error.statusCode || 500;
+      res.status(statusCode).json({ message: error.message || 'Server error during transaction retrieval' });
+    }
+  }
+
+  /**
    * Create new transaction
    * Accessible by: Bookkeeper
    */

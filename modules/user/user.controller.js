@@ -78,6 +78,23 @@ class UserController {
   }
 
   /**
+   * GET Get user by ID
+   * Accessible by: Super Admin, Client Admin
+   */
+  async getUser(req, res) {
+    try {
+      const user = await userService.getUserById(req.params.user_id);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      res.json(user);
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      res.status(statusCode).json({ message: error.message || 'Server error during user retrieval' });
+    }
+  }
+
+  /**
    * PATCH Update user info or status
    * Accessible by: Super Admin, Client Admin
    */
