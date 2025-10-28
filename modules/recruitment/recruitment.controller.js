@@ -17,6 +17,21 @@ class RecruitmentController {
   }
 
   /**
+   * Get job opening by ID
+   * Accessible by: Recruiter / Client Admin
+   */
+  async getJob(req, res) {
+    try {
+      const job = await recruitmentService.getJob(req.params.job_id, req.user);
+      res.json(job);
+    } catch (error) {
+      console.error('Error fetching job:', error);
+      const statusCode = error.statusCode || 500;
+      res.status(statusCode).json({ message: error.message || 'Server error during job retrieval' });
+    }
+  }
+
+  /**
    * Create new job opening
    * Accessible by: Recruiter / Client Admin
    */
@@ -58,6 +73,21 @@ class RecruitmentController {
       console.error('Error deleting job:', error);
       const statusCode = error.statusCode || 500;
       res.status(statusCode).json({ message: error.message || 'Server error during job deletion' });
+    }
+  }
+
+  /**
+   * Get candidate by ID
+   * Accessible by: Recruiter / HR
+   */
+  async getCandidate(req, res) {
+    try {
+      const candidate = await recruitmentService.getCandidate(req.params.candidate_id, req.user);
+      res.json(candidate);
+    } catch (error) {
+      console.error('Error fetching candidate:', error);
+      const statusCode = error.statusCode || 500;
+      res.status(statusCode).json({ message: error.message || 'Server error during candidate retrieval' });
     }
   }
 

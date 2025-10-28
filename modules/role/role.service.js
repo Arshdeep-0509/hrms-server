@@ -75,6 +75,31 @@ class RoleService {
   }
 
   /**
+   * Get user role
+   * @param {String} userId - User ID
+   * @returns {Promise<Object>} User with role information
+   */
+  async getUserRole(userId) {
+    const user = await User.findOne({ user_id: userId }).select('-password');
+    
+    if (!user) {
+      throw { statusCode: 404, message: 'User not found' };
+    }
+
+    const role = await Role.findOne({ name: user.role });
+    
+    return {
+      user: {
+        user_id: user.user_id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      },
+      role: role || { name: user.role, permissions: [] }
+    };
+  }
+
+  /**
    * Get access rules for a specific role
    * @param {String} roleName - Role name
    * @returns {Promise<Object>} Role with permissions
