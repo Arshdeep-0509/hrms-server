@@ -255,10 +255,9 @@ const EmployeeSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Indexes for better query performance
-EmployeeSchema.index({ employee_id: 1 });
+// Note: employee_id and email already have indexes due to unique: true
 EmployeeSchema.index({ user: 1 });
 EmployeeSchema.index({ organization: 1 });
-EmployeeSchema.index({ email: 1 });
 EmployeeSchema.index({ employmentStatus: 1 });
 EmployeeSchema.index({ department: 1 });
 EmployeeSchema.index({ createdAt: -1 });

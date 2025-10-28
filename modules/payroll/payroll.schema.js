@@ -502,24 +502,21 @@ const PayrollReportSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Indexes for better query performance
-PayrollCycleSchema.index({ cycle_id: 1 });
+// Note: cycle_id, payslip_id, tax_id, and report_id already have indexes due to unique: true
 PayrollCycleSchema.index({ organization: 1 });
 PayrollCycleSchema.index({ status: 1 });
 PayrollCycleSchema.index({ payDate: -1 });
 
-PayslipSchema.index({ payslip_id: 1 });
 PayslipSchema.index({ employee: 1 });
 PayslipSchema.index({ organization: 1 });
 PayslipSchema.index({ payrollCycle: 1 });
 PayslipSchema.index({ payDate: -1 });
 PayslipSchema.index({ status: 1 });
 
-PayrollTaxSchema.index({ tax_id: 1 });
 PayrollTaxSchema.index({ organization: 1 });
 PayrollTaxSchema.index({ taxYear: 1 });
 PayrollTaxSchema.index({ filingStatus: 1 });
 
-PayrollReportSchema.index({ report_id: 1 });
 PayrollReportSchema.index({ organization: 1 });
 PayrollReportSchema.index({ reportType: 1 });
 PayrollReportSchema.index({ generatedAt: -1 });
