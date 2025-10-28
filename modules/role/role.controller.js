@@ -47,6 +47,21 @@ class RoleController {
   }
 
   /**
+   * Get user role
+   * Accessible to Super Admin
+   */
+  async getUserRole(req, res) {
+    try {
+      const { user_id } = req.params;
+      const userRole = await roleService.getUserRole(user_id);
+      res.json(userRole);
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      res.status(statusCode).json({ message: error.message || 'Error fetching user role' });
+    }
+  }
+
+  /**
    * Modify access rights dynamically
    * Accessible to Super Admin
    */

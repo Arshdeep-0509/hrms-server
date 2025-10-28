@@ -49,6 +49,37 @@ class RecruitmentService {
   }
 
   /**
+   * Get job opening by ID
+   */
+  async getJob(jobId, user) {
+    // Try to find by job_id first (numeric), then fall back to ObjectId
+    let job = await Job.findOne({ job_id: parseInt(jobId) })
+      .populate('organization', 'name')
+      .populate('hiringManager', 'name email')
+      .populate('createdBy', 'name email');
+    if (!job) {
+      job = await Job.findById(jobId)
+        .populate('organization', 'name')
+        .populate('hiringManager', 'name email')
+        .populate('createdBy', 'name email');
+    }
+
+    if (!job) {
+      throw { statusCode: 404, message: 'Job opening not found.' };
+    }
+
+    // Authorization check
+    if (user.role !== 'Super Admin') {
+      const org = await Organization.findOne({ clientAdmin: user.id });
+      if (!org || job.organization._id.toString() !== org._id.toString()) {
+        throw { statusCode: 403, message: 'Forbidden: You do not have access to this job opening.' };
+      }
+    }
+
+    return job;
+  }
+
+  /**
    * Create new job opening
    * @param {Object} jobData - Job data
    * @param {Object} user - Current authenticated user
@@ -215,6 +246,39 @@ class RecruitmentService {
     await Job.deleteOne(job.job_id ? { job_id: job.job_id } : { _id: job._id });
 
     return { message: 'Job opening deleted successfully' };
+  }
+
+  /**
+   * Get candidate by ID
+   */
+  async getCandidate(candidateId, user) {
+    // Try to find by candidate_id first (numeric), then fall back to ObjectId
+    let candidate = await Candidate.findOne({ candidate_id: parseInt(candidateId) })
+      .populate('organization', 'name')
+      .populate('job', 'title department')
+      .populate('addedBy', 'name email')
+      .populate('interviewSchedules.interviewer', 'name email');
+    if (!candidate) {
+      candidate = await Candidate.findById(candidateId)
+        .populate('organization', 'name')
+        .populate('job', 'title department')
+        .populate('addedBy', 'name email')
+        .populate('interviewSchedules.interviewer', 'name email');
+    }
+
+    if (!candidate) {
+      throw { statusCode: 404, message: 'Candidate not found.' };
+    }
+
+    // Authorization check
+    if (user.role !== 'Super Admin') {
+      const org = await Organization.findOne({ clientAdmin: user.id });
+      if (!org || candidate.organization._id.toString() !== org._id.toString()) {
+        throw { statusCode: 403, message: 'Forbidden: You do not have access to this candidate.' };
+      }
+    }
+
+    return candidate;
   }
 
   /**

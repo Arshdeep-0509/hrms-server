@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Organization = require('./organization.schema');
 const User = require('../user/user.schema');
+const Employee = require('../employee/employee.schema');
 
 class OrganizationService {
   /**
@@ -45,6 +46,42 @@ class OrganizationService {
 
     // Super Admin or Client Manager sees all organizations
     return await Organization.find({});
+  }
+
+  /**
+   * Get organization users for a given organization id
+   * @param {String|Number} organizationId
+   * @param {Object} currentUser
+   * @returns {Promise<Array>} Users in the organization
+   */
+  async getOrganizationUsers(organizationId, currentUser) {
+    let query;
+    try {
+      query = this._buildIdQuery(organizationId);
+    } catch (error) {
+      throw error;
+    }
+
+    const organization = await Organization.findOne(query);
+    if (!organization) {
+      throw { statusCode: 404, message: 'Organization not found' };
+    }
+
+    // Authorization: Client Admin can only view their own organization
+    if (currentUser.role === 'Client Admin' && organization.clientAdmin !== currentUser.user_id) {
+      throw { statusCode: 403, message: 'Forbidden: You do not manage this organization.' };
+    }
+
+    // Fetch employees for the organization, then fetch users for those user_ids
+    const employees = await Employee.find({ organization_id: organization.organization_id }).select('user_id');
+    const userIds = employees.map(e => e.user_id);
+
+    if (userIds.length === 0) {
+      return [];
+    }
+
+    const users = await User.find({ user_id: { $in: userIds } }).select('-password');
+    return users;
   }
 
   /**

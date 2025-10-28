@@ -52,6 +52,29 @@ class FinanceService {
   }
 
   /**
+   * Get transaction by numeric ID
+   */
+  async getTransaction(transactionId, user) {
+    const transaction = await Transaction.findOne({ transaction_id: transactionId })
+      .populate('organization', 'name')
+      .populate('createdBy', 'name email')
+      .populate('reconciledBy', 'name email');
+
+    if (!transaction) {
+      throw { statusCode: 404, message: 'Transaction not found.' };
+    }
+
+    if (user.role !== 'Super Admin') {
+      const org = await Organization.findOne({ clientAdmin: user.id });
+      if (!org || transaction.organization._id.toString() !== org._id.toString()) {
+        throw { statusCode: 403, message: 'Forbidden: You do not have access to this transaction.' };
+      }
+    }
+
+    return transaction;
+  }
+
+  /**
    * Create new transaction
    * @param {Object} transactionData - Transaction data
    * @param {Object} user - Current authenticated user

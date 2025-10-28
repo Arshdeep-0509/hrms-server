@@ -130,6 +130,21 @@ class OrganizationController {
       res.status(statusCode).json({ message: error.message || 'Server error during client admin assignment' });
     }
   }
+
+  /**
+   * Get organization users
+   * Accessible by: Super Admin, Client Admin
+   * Accepts: organization _id or organization_id
+   */
+  async getOrganizationUsers(req, res) {
+    try {
+      const users = await organizationService.getOrganizationUsers(req.params.id, req.user);
+      res.json(users);
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      res.status(statusCode).json({ message: error.message || 'Server error during organization users retrieval' });
+    }
+  }
 }
 
 module.exports = new OrganizationController();

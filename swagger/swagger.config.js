@@ -885,7 +885,7 @@ const options = {
           properties: {
             roleName: {
               type: 'string',
-              enum: ['Super Admin', 'Client Admin', 'HR Account Manager', 'Employee', 'Payroll Specialist', 'Bookkeeping', 'Recruitment Specialist'],
+              enum: ['Super Admin', 'Client Admin', 'HR Account Manager', 'Employee', 'Payroll Specialist', 'Bookkeeping', 'Recruitment Specialist', 'Leave Specialist', 'Department Specialist'],
               description: 'Role name',
             },
             description: {
@@ -909,7 +909,7 @@ const options = {
                     properties: {
                       module: {
                         type: 'string',
-                        enum: ['auth', 'user', 'role', 'organization', 'employee', 'payroll', 'attendance', 'finance', 'recruitment'],
+                        enum: ['auth', 'user', 'role', 'organization', 'employee', 'payroll', 'attendance', 'finance', 'recruitment', 'leave', 'department'],
                       },
                       access: {
                         type: 'string',
@@ -959,7 +959,9 @@ const options = {
     './modules/payroll/payroll.routes.js',
     './modules/attendance/attendance.routes.js',
     './modules/finance/finance.routes.js',
-    './modules/recruitment/recruitment.routes.js',
+    './modules/recruitment/recruitment.routes.js',      
+    './modules/leave/leave.routes.js',
+    './modules/department/department.routes.js',
   ],
 };
 
