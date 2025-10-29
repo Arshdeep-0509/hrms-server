@@ -15,6 +15,7 @@ const payrollRoutes = require('./modules/payroll/payroll.routes');
 const departmentRoutes = require('./modules/department/department.routes');
 const leaveRoutes = require('./modules/leave/leave.routes');
 const attendanceRoutes = require('./modules/attendance/attendance.routes');
+const healthcareRoutes = require('./modules/healthcare/healthcare.routes');
 
 dotenv.config()
 const app = express();
@@ -57,6 +58,7 @@ app.use('/api/payroll', payrollRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/leave', leaveRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/healthcare', healthcareRoutes);
 
   // Simple health check route
 app.get('/', (req, res) => {
@@ -73,7 +75,10 @@ app.get('/', (req, res) => {
       payroll: '/api/payroll',
       attendance: '/api/attendance',
       finance: '/api/finance',
-      recruitment: '/api/recruitment'
+      recruitment: '/api/recruitment',
+      departments: '/api/departments',
+      leave: '/api/leave',
+      healthcare: '/api/healthcare'
     }
   });
 });
