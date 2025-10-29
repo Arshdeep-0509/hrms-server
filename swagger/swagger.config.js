@@ -942,6 +942,242 @@ const options = {
             },
           },
         },
+        Ticket: {
+          type: 'object',
+          properties: {
+            ticket_id: {
+              type: 'integer',
+              description: 'Ticket ID',
+            },
+            title: {
+              type: 'string',
+              description: 'Ticket title',
+            },
+            description: {
+              type: 'string',
+              description: 'Ticket description',
+            },
+            category: {
+              type: 'string',
+              enum: ['HR', 'IT', 'Payroll', 'Finance', 'General', 'Technical', 'Account', 'Other'],
+              description: 'Ticket category',
+            },
+            subcategory: {
+              type: 'string',
+              description: 'Ticket subcategory',
+            },
+            status: {
+              type: 'string',
+              enum: ['Open', 'Pending', 'In Progress', 'Resolved', 'Closed', 'Escalated'],
+              description: 'Ticket status',
+            },
+            priority: {
+              type: 'string',
+              enum: ['Low', 'Medium', 'High', 'Critical'],
+              description: 'Ticket priority',
+            },
+            sla: {
+              type: 'string',
+              enum: ['Standard', 'High Priority', 'Critical'],
+              description: 'SLA level',
+            },
+            slaDeadline: {
+              type: 'string',
+              format: 'date-time',
+              description: 'SLA deadline',
+            },
+            assignedTo: {
+              type: 'object',
+              properties: {
+                _id: { type: 'string' },
+                name: { type: 'string' },
+                email: { type: 'string' },
+              },
+              description: 'Assigned agent',
+            },
+            requester: {
+              type: 'object',
+              properties: {
+                _id: { type: 'string' },
+                name: { type: 'string' },
+                email: { type: 'string' },
+              },
+              description: 'Ticket requester',
+            },
+            requesterName: {
+              type: 'string',
+              description: 'Requester name',
+            },
+            requesterEmail: {
+              type: 'string',
+              format: 'email',
+              description: 'Requester email',
+            },
+            requesterDepartment: {
+              type: 'string',
+              description: 'Requester department',
+            },
+            organization: {
+              type: 'object',
+              properties: {
+                _id: { type: 'string' },
+                name: { type: 'string' },
+              },
+              description: 'Organization',
+            },
+            resolution: {
+              type: 'string',
+              description: 'Resolution details',
+            },
+            resolvedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Resolution date',
+            },
+            resolvedBy: {
+              type: 'object',
+              properties: {
+                _id: { type: 'string' },
+                name: { type: 'string' },
+                email: { type: 'string' },
+              },
+              description: 'Resolved by',
+            },
+            escalatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Escalation date',
+            },
+            escalationLevel: {
+              type: 'integer',
+              description: 'Escalation level',
+            },
+            comments: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  comment: { type: 'string' },
+                  isInternal: { type: 'boolean' },
+                  commentedBy: {
+                    type: 'object',
+                    properties: {
+                      _id: { type: 'string' },
+                      name: { type: 'string' },
+                      email: { type: 'string' },
+                    },
+                  },
+                  commentedByName: { type: 'string' },
+                  commentedAt: { type: 'string', format: 'date-time' },
+                },
+              },
+              description: 'Ticket comments',
+            },
+            attachments: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  fileName: { type: 'string' },
+                  originalName: { type: 'string' },
+                  filePath: { type: 'string' },
+                  fileSize: { type: 'number' },
+                  mimeType: { type: 'string' },
+                  uploadedBy: {
+                    type: 'object',
+                    properties: {
+                      _id: { type: 'string' },
+                      name: { type: 'string' },
+                      email: { type: 'string' },
+                    },
+                  },
+                  uploadedAt: { type: 'string', format: 'date-time' },
+                  isPublic: { type: 'boolean' },
+                },
+              },
+              description: 'Ticket attachments',
+            },
+            tags: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Ticket tags',
+            },
+            labels: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Ticket labels',
+            },
+            timeSpent: {
+              type: 'number',
+              description: 'Time spent in minutes',
+            },
+            statusHistory: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  status: { type: 'string' },
+                  changedAt: { type: 'string', format: 'date-time' },
+                  changedBy: { type: 'string' },
+                  reason: { type: 'string' },
+                  notes: { type: 'string' },
+                },
+              },
+              description: 'Status change history',
+            },
+            priorityHistory: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  priority: { type: 'string' },
+                  changedAt: { type: 'string', format: 'date-time' },
+                  changedBy: { type: 'string' },
+                  reason: { type: 'string' },
+                },
+              },
+              description: 'Priority change history',
+            },
+            satisfaction: {
+              type: 'object',
+              properties: {
+                rating: { type: 'number', minimum: 1, maximum: 5 },
+                feedback: { type: 'string' },
+                ratedAt: { type: 'string', format: 'date-time' },
+              },
+              description: 'Customer satisfaction rating',
+            },
+            source: {
+              type: 'string',
+              enum: ['Web Portal', 'Email', 'Phone', 'Walk-in', 'API', 'Other'],
+              description: 'Ticket source',
+            },
+            impact: {
+              type: 'string',
+              enum: ['Low', 'Medium', 'High', 'Critical'],
+              description: 'Business impact',
+            },
+            urgency: {
+              type: 'string',
+              enum: ['Low', 'Medium', 'High', 'Critical'],
+              description: 'Urgency level',
+            },
+            isDeleted: {
+              type: 'boolean',
+              description: 'Soft delete status',
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Creation timestamp',
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Last update timestamp',
+            },
+          },
+        },
       },
     },
     security: [
@@ -962,6 +1198,7 @@ const options = {
     './modules/recruitment/recruitment.routes.js',      
     './modules/leave/leave.routes.js',
     './modules/department/department.routes.js',
+    './modules/helpdesk/helpdesk.routes.js',
   ],
 };
 
