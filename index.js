@@ -80,7 +80,7 @@ app.get('/', (req, res) => {
       recruitment: '/api/recruitment',
       departments: '/api/departments',
       leave: '/api/leave',
-      healthcare: '/api/healthcare'
+      healthcare: '/api/healthcare',
       recruitment: '/api/recruitment',
       helpdesk: '/api/tickets'
     }
