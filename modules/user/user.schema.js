@@ -62,15 +62,15 @@ UserSchema.pre('save', async function(next) {
       this.user_id = counter.sequence_value;
     } catch (error) {
       return next(error);
-    }
+  }
   }
 
   // Hash password if it's been modified
   if (this.isModified('password')) {
-    try {
+  try {
       const salt = await bcrypt.genSalt(8); // Reduced from 10 to 8 for better performance
-      this.password = await bcrypt.hash(this.password, salt);
-    } catch (err) {
+    this.password = await bcrypt.hash(this.password, salt);
+  } catch (err) {
       return next(err);
     }
   }
