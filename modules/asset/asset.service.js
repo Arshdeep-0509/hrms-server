@@ -1,14 +1,7 @@
-const {
-  Asset,
-  AssetAssignmentHistory,
-  AssetMaintenanceSchedule,
-  AssetDisposal,
-  AssetReport
-} = require('./asset.schema');
+const { Asset } = require('./asset.schema');
 const User = require('../user/user.schema');
 const Employee = require('../employee/employee.schema');
 const Department = require('../department/department.schema');
-const Organization = require('../organization/organization.schema');
 
 class AssetService {
   // ==================== ASSET MANAGEMENT SERVICES ====================
@@ -17,7 +10,10 @@ class AssetService {
     try {
       const asset = new Asset({
         ...assetData,
-        createdBy: userId
+        createdBy: userId,
+        history: [],
+        maintenanceSchedules: [],
+        reports: []
       });
       
       await asset.save();
@@ -204,31 +200,29 @@ class AssetService {
         assignmentInfo.department_id = assignTo;
       }
       
-      await Asset.updateOne(
-        { asset_id: asset_id },
-        {
-          assignedTo: assignmentInfo,
-          status: 'Assigned',
-          updatedAt: new Date()
-        }
-      );
-      
-      // Create assignment history
-      const history = new AssetAssignmentHistory({
-        asset_id: asset_id,
-        organization_id: asset.organization_id,
+      // Add history entry
+      const historyEntry = {
         action: 'Assigned',
         to: {
           type: assignType,
           employee_id: assignType === 'Employee' ? assignTo : null,
           department_id: assignType === 'Department' ? assignTo : null
         },
+        actionDate: new Date(),
         actionBy: userId,
         reason: reason,
         notes: notes
-      });
+      };
       
-      await history.save();
+      await Asset.updateOne(
+        { asset_id: asset_id },
+        {
+          assignedTo: assignmentInfo,
+          status: 'Assigned',
+          $push: { history: historyEntry },
+          updatedAt: new Date()
+        }
+      );
       
       return {
         success: true,
@@ -258,31 +252,29 @@ class AssetService {
         throw new Error('Asset is not currently assigned');
       }
       
-      // Create return history
-      const history = new AssetAssignmentHistory({
-        asset_id: asset_id,
-        organization_id: asset.organization_id,
+      // Create return history entry
+      const historyEntry = {
         action: 'Returned',
         from: {
           type: asset.assignedTo.type,
           employee_id: asset.assignedTo.employee_id,
           department_id: asset.assignedTo.department_id
         },
+        actionDate: new Date(),
         actionBy: userId,
         reason: reason,
         notes: notes,
         condition: condition
-      });
-      
-      await history.save();
+      };
       
       // Update asset status
       await Asset.updateOne(
         { asset_id: asset_id },
         {
-          assignedTo: null,
+          $unset: { assignedTo: 1 },
           status: 'Available',
           condition: condition || asset.condition,
+          $push: { history: historyEntry },
           updatedAt: new Date()
         }
       );
@@ -314,10 +306,8 @@ class AssetService {
         throw new Error('Asset is not currently assigned');
       }
       
-      // Create transfer history
-      const history = new AssetAssignmentHistory({
-        asset_id: asset_id,
-        organization_id: asset.organization_id,
+      // Create transfer history entry
+      const historyEntry = {
         action: 'Transferred',
         from: {
           type: fromType,
@@ -329,12 +319,11 @@ class AssetService {
           employee_id: toType === 'Employee' ? toId : null,
           department_id: toType === 'Department' ? toId : null
         },
+        actionDate: new Date(),
         actionBy: userId,
         reason: reason,
         notes: notes
-      });
-      
-      await history.save();
+      };
       
       // Update asset assignment
       const newAssignment = {
@@ -353,6 +342,7 @@ class AssetService {
         { asset_id: asset_id },
         {
           assignedTo: newAssignment,
+          $push: { history: historyEntry },
           updatedAt: new Date()
         }
       );
@@ -374,9 +364,16 @@ class AssetService {
 
   async getAssetLogs(assetId) {
     try {
-      const logs = await AssetAssignmentHistory.find({ asset_id: assetId })
-        .sort({ actionDate: -1 })
-        .lean();
+      const asset = await Asset.findOne({ asset_id: assetId }).lean();
+      
+      if (!asset) {
+        throw new Error('Asset not found');
+      }
+      
+      const logs = asset.history || [];
+      
+      // Sort logs by actionDate descending
+      logs.sort((a, b) => new Date(b.actionDate) - new Date(a.actionDate));
       
       // Add user details
       for (let log of logs) {
@@ -437,23 +434,52 @@ class AssetService {
 
   async scheduleMaintenance(maintenanceData, userId) {
     try {
-      const maintenance = new AssetMaintenanceSchedule({
+      const { asset_id } = maintenanceData;
+      
+      const asset = await Asset.findOne({ asset_id: asset_id });
+      if (!asset) {
+        throw new Error('Asset not found');
+      }
+      
+      // Create maintenance schedule entry
+      const maintenanceEntry = {
         ...maintenanceData,
         createdBy: userId
-      });
+      };
+      delete maintenanceEntry.asset_id;
+      delete maintenanceEntry.organization_id;
       
-      await maintenance.save();
+      await Asset.updateOne(
+        { asset_id: asset_id },
+        {
+          $push: { maintenanceSchedules: maintenanceEntry },
+          status: 'In Maintenance',
+          updatedAt: new Date()
+        }
+      );
+      
+      // Also add to history
+      const historyEntry = {
+        action: 'Maintenance',
+        actionDate: maintenanceEntry.scheduledDate || new Date(),
+        actionBy: userId,
+        notes: maintenanceEntry.notes || maintenanceEntry.description
+      };
+      
+      await Asset.updateOne(
+        { asset_id: asset_id },
+        { $push: { history: historyEntry } }
+      );
       
       return {
         success: true,
         message: 'Maintenance scheduled successfully',
         maintenance: {
-          schedule_id: maintenance.schedule_id,
-          asset_id: maintenance.asset_id,
-          maintenanceType: maintenance.maintenanceType,
-          title: maintenance.title,
-          scheduledDate: maintenance.scheduledDate,
-          status: maintenance.status
+          asset_id: asset_id,
+          maintenanceType: maintenanceEntry.maintenanceType,
+          title: maintenanceEntry.title,
+          scheduledDate: maintenanceEntry.scheduledDate,
+          status: maintenanceEntry.status || 'Scheduled'
         }
       };
     } catch (error) {
@@ -463,28 +489,40 @@ class AssetService {
 
   async listMaintenanceSchedules(organizationId, filters = {}) {
     try {
-      const query = { organization_id: organizationId };
+      const query = { organization_id: organizationId, isActive: true };
       
       if (filters.asset_id) query.asset_id = filters.asset_id;
-      if (filters.maintenanceType) query.maintenanceType = filters.maintenanceType;
-      if (filters.status) query.status = filters.status;
-      if (filters.priority) query.priority = filters.priority;
-      if (filters.assignedTo) query.assignedTo = filters.assignedTo;
       
-      const schedules = await AssetMaintenanceSchedule.find(query)
-        .sort({ scheduledDate: 1 })
-        .lean();
+      const assets = await Asset.find(query).lean();
       
-      // Add asset details
-      for (let schedule of schedules) {
-        const asset = await Asset.findOne({ asset_id: schedule.asset_id }).lean();
-        schedule.asset = asset ? {
-          asset_id: asset.asset_id,
-          assetCode: asset.assetCode,
-          assetName: asset.assetName,
-          category: asset.category
-        } : null;
+      // Extract maintenance schedules from assets
+      let schedules = [];
+      for (let asset of assets) {
+        if (asset.maintenanceSchedules && asset.maintenanceSchedules.length > 0) {
+          for (let schedule of asset.maintenanceSchedules) {
+            // Apply filters
+            if (filters.maintenanceType && schedule.maintenanceType !== filters.maintenanceType) continue;
+            if (filters.status && schedule.status !== filters.status) continue;
+            if (filters.priority && schedule.priority !== filters.priority) continue;
+            if (filters.assignedTo && schedule.assignedTo !== filters.assignedTo) continue;
+            
+            const scheduleWithAsset = {
+              ...schedule,
+              asset_id: asset.asset_id,
+              asset: {
+                asset_id: asset.asset_id,
+                assetCode: asset.assetCode,
+                assetName: asset.assetName,
+                category: asset.category
+              }
+            };
+            schedules.push(scheduleWithAsset);
+          }
+        }
       }
+      
+      // Sort by scheduled date
+      schedules.sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
       
       return {
         success: true,
@@ -585,42 +623,52 @@ class AssetService {
 
   async reportLostAsset(reportData, userId) {
     try {
-      const report = new AssetReport({
+      const { asset_id } = reportData;
+      
+      const asset = await Asset.findOne({ asset_id: asset_id });
+      if (!asset) {
+        throw new Error('Asset not found');
+      }
+      
+      // Create report entry
+      const reportEntry = {
         ...reportData,
         reportedBy: userId
-      });
-      
-      await report.save();
+      };
+      delete reportEntry.asset_id;
+      delete reportEntry.organization_id;
       
       // Update asset status
       await Asset.updateOne(
-        { asset_id: reportData.asset_id },
+        { asset_id: asset_id },
         {
           status: 'Lost',
+          $push: { reports: reportEntry },
           updatedAt: new Date()
         }
       );
       
       // Create history entry
-      const history = new AssetAssignmentHistory({
-        asset_id: reportData.asset_id,
-        organization_id: reportData.organization_id,
+      const historyEntry = {
         action: 'Lost',
+        actionDate: new Date(),
         actionBy: userId,
         reason: reportData.description,
         notes: reportData.notes
-      });
+      };
       
-      await history.save();
+      await Asset.updateOne(
+        { asset_id: asset_id },
+        { $push: { history: historyEntry } }
+      );
       
       return {
         success: true,
         message: 'Asset reported as lost successfully',
         report: {
-          report_id: report.report_id,
-          asset_id: report.asset_id,
-          reportType: report.reportType,
-          status: report.status
+          asset_id: asset_id,
+          reportType: reportEntry.reportType,
+          status: reportEntry.status || 'Open'
         }
       };
     } catch (error) {
@@ -630,43 +678,45 @@ class AssetService {
 
   async markDisposed(assetId, disposalData, userId) {
     try {
-      const disposal = new AssetDisposal({
-        ...disposalData,
-        asset_id: assetId,
-        disposedBy: userId
-      });
+      const asset = await Asset.findOne({ asset_id: assetId });
+      if (!asset) {
+        throw new Error('Asset not found');
+      }
       
-      await disposal.save();
-      
-      // Update asset status
+      // Update disposal information
       await Asset.updateOne(
         { asset_id: assetId },
         {
           status: 'Disposed',
+          disposal: {
+            ...disposalData,
+            disposedBy: userId
+          },
           updatedAt: new Date()
         }
       );
       
       // Create history entry
-      const history = new AssetAssignmentHistory({
-        asset_id: assetId,
-        organization_id: disposalData.organization_id,
+      const historyEntry = {
         action: 'Disposed',
+        actionDate: new Date(),
         actionBy: userId,
         reason: disposalData.disposalReason,
         notes: disposalData.notes
-      });
+      };
       
-      await history.save();
+      await Asset.updateOne(
+        { asset_id: assetId },
+        { $push: { history: historyEntry } }
+      );
       
       return {
         success: true,
         message: 'Asset marked as disposed successfully',
         disposal: {
-          disposal_id: disposal.disposal_id,
           asset_id: assetId,
-          disposalType: disposal.disposalType,
-          disposalDate: disposal.disposalDate
+          disposalType: disposalData.disposalType,
+          disposalDate: disposalData.disposalDate
         }
       };
     } catch (error) {
@@ -676,32 +726,36 @@ class AssetService {
 
   async listDisposalRecords(organizationId, filters = {}) {
     try {
-      const query = { organization_id: organizationId };
+      const query = { organization_id: organizationId, isActive: true };
       
-      if (filters.disposalType) query.disposalType = filters.disposalType;
-      if (filters.status) query.status = filters.status;
-      if (filters.startDate) query.disposalDate = { $gte: new Date(filters.startDate) };
+      if (filters.disposalType) query['disposal.disposalType'] = filters.disposalType;
+      if (filters.status) query['disposal.status'] = filters.status;
+      if (filters.startDate) query['disposal.disposalDate'] = { $gte: new Date(filters.startDate) };
       if (filters.endDate) {
-        query.disposalDate = {
-          ...query.disposalDate,
+        query['disposal.disposalDate'] = {
+          ...query['disposal.disposalDate'],
           $lte: new Date(filters.endDate)
         };
       }
       
-      const disposals = await AssetDisposal.find(query)
-        .sort({ disposalDate: -1 })
-        .lean();
+      const assets = await Asset.find(query).lean();
       
-      // Add asset details
-      for (let disposal of disposals) {
-        const asset = await Asset.findOne({ asset_id: disposal.asset_id }).lean();
-        disposal.asset = asset ? {
+      // Extract disposal records
+      const disposals = assets
+        .filter(asset => asset.disposal && asset.disposal.disposalType)
+        .map(asset => ({
+          ...asset.disposal,
           asset_id: asset.asset_id,
-          assetCode: asset.assetCode,
-          assetName: asset.assetName,
-          category: asset.category
-        } : null;
-      }
+          asset: {
+            asset_id: asset.asset_id,
+            assetCode: asset.assetCode,
+            assetName: asset.assetName,
+            category: asset.category
+          }
+        }));
+      
+      // Sort by disposal date
+      disposals.sort((a, b) => new Date(b.disposalDate) - new Date(a.disposalDate));
       
       return {
         success: true,

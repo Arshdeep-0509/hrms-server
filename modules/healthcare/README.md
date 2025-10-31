@@ -9,56 +9,32 @@ Manage healthcare-specific requirements including medical licenses, HIPAA compli
 ## File Structure
 ```
 healthcare/
-├── healthcare.schema.js     # Database models (9 schemas)
+├── healthcare.schema.js     # Optimized unified schema with embedded subdocuments
 ├── healthcare.service.js    # Business logic
 ├── healthcare.controller.js # Request handlers
 ├── healthcare.routes.js     # API endpoints (23 endpoints)
 └── README.md                # This file
 ```
 
-## Schemas
+## Schema
 
-### HealthcareRecruitment
-- Medical position recruitment
-- Required credentials tracking
-- Specialty and shift types
-- HIPAA training requirements
+### Healthcare (Unified Schema)
+The healthcare module uses a single optimized schema with an `entityType` field to differentiate between different healthcare entities, using embedded subdocuments for better performance and simpler data management.
 
-### HealthcareCredentials
-- Credential types (Medical License, DEA, Board Certification, etc.)
-- Issue and expiration dates
-- Renewal tracking
-- Auto-notification for expiring licenses
+**Entity Types:**
+- **Recruitment** - Medical position recruitment with required credentials, specialty tracking, and HIPAA training requirements
+- **Credential** - License/credential management (Medical License, DEA, Board Certification, etc.) with expiration tracking and auto-notification
+- **Shift** - Shift scheduling with embedded **assignments[]** for clinical staff, overtime calculations, and required staffing levels
+- **Policy** - HIPAA compliance policies, clinical protocols, patient safety policies with acknowledgments tracking
+- **Workflow** - Onboarding workflows with embedded **onboardingStatuses[]** for step-by-step tracking, document collection, and progress monitoring
+- **Role** - Healthcare-specific roles with HIPAA access levels, clinical permissions, and resource-based access control
+- **Audit** - Patient data access logs, compliance audit trail, security tracking with export functionality
 
-### HealthcareShifts & HealthcareShiftAssignment
-- Shift scheduling for clinical staff
-- Shift types (Day, Night, On-call, etc.)
-- Required staffing levels
-- Overtime calculations
-
-### HealthcarePolicies
-- HIPAA compliance policies
-- Clinical protocols
-- Patient safety policies
-- Policy acknowledgments
-
-### HealthcareOnboardingWorkflow & HealthcareOnboardingStatus
-- Clinical staff onboarding
-- Step-by-step workflow tracking
-- Document collection
-- Progress monitoring
-
-### HealthcareRoles
-- Healthcare-specific roles
-- HIPAA access levels
-- Clinical permissions
-- Resource-based access control
-
-### HealthcareAuditLogs
-- Patient data access logs
-- Compliance audit trail
-- Security tracking
-- Export functionality
+**Key Features:**
+- Single collection with entityType discrimination
+- Embedded subdocuments for related data (shift assignments, onboarding statuses)
+- Optimized queries using entityType and subdocument paths
+- Maintains all functionality while reducing complexity
 
 ## Key Features (23 APIs)
 - Medical staff recruitment

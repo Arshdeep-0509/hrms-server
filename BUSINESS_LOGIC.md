@@ -782,25 +782,50 @@ Draft → Sent → Under Negotiation → Accepted/Rejected → Withdrawn
 
 ## Healthcare-Specific Workflows
 
+### Schema Architecture
+
+**Optimized Design**: The Healthcare module uses a **unified schema** with `entityType` discrimination to support multiple healthcare entities in a single collection. The schema uses embedded subdocuments for related data:
+
+**Entity Types**:
+- **Recruitment** - Medical position recruitment with required credentials and HIPAA training
+- **Credential** - License/credential management with expiration tracking
+- **Shift** - Shift scheduling with embedded `assignments[]` for staff assignments
+- **Policy** - HIPAA compliance policies with acknowledgment tracking
+- **Workflow** - Onboarding workflows with embedded `onboardingStatuses[]` per employee
+- **Role** - Healthcare-specific access roles with HIPAA permissions
+- **Audit** - Patient data access logs and compliance audit trail
+
+**Benefits**:
+- Single collection with entityType filtering
+- Embedded subdocuments for related data (shift assignments, onboarding statuses)
+- Optimized queries using entityType and subdocument paths
+- Reduced complexity from 9 separate collections to 1
+
+---
+
 ### Clinical Staff Recruitment
 
 **Differences from Standard Recruitment**:
-- Required credentials validation
-- HIPAA training mandate
-- Background check mandatory
-- Drug test requirement
-- License verification
+- Required credentials validation (stored in `recruitment.requiredCredentials[]`)
+- HIPAA training mandate (`recruitment.hipaaTrainingRequired: true`)
+- Background check mandatory (`recruitment.backgroundCheckRequired: true`)
+- Drug test requirement (`recruitment.drugTestRequired: true`)
+- License verification before onboarding
+
+**Recruitment Storage**: All recruitment data stored with `entityType: 'Recruitment'`
 
 **Credential Tracking**:
 - Medical license (state-wise)
 - Board certifications
-- Specializations
+- Specializations tracked per position
 - Continuing education credits
-- License expiration alerts
+- License expiration alerts (handled by Credential entity)
 
 ---
 
 ### Credential Management
+
+**Credential Storage**: Each credential stored as separate document with `entityType: 'Credential'`
 
 **Credential Lifecycle**:
 ```
@@ -809,17 +834,39 @@ Issued → Active → Expiring (30/60/90 day alerts) → Expired → Renewed
                         Suspended/Revoked
 ```
 
+**Data Structure**:
+```javascript
+{
+  healthcare_id: Number,
+  entityType: 'Credential',
+  organization_id: Number,
+  credential: {
+    employee_id: Number,
+    credentialType: 'Medical License' | 'DEA License' | ...,
+    credentialName: String,
+    expirationDate: Date,
+    status: 'Active' | 'Expired' | 'Suspended' | 'Revoked',
+    lastReminderSent: Date,
+    complianceStatus: 'Compliant' | 'Non-Compliant' | 'At Risk'
+  }
+}
+```
+
 **Auto-Renewal Workflows**:
-- Renewal reminders sent
+- Renewal reminders sent (30 days before expiration)
 - Document upload required
 - Verification by compliance officer
-- Status updates
+- Status updates tracked in credential subdocument
+
+**Expiration Notifications**: System checks `credential.expirationDate` and sends alerts to employees and HR
 
 ---
 
 ### Shift-Based Payroll (Healthcare)
 
-**Purpose**: Calculate pay for variable shifts
+**Purpose**: Calculate pay for variable shifts in healthcare facilities
+
+**Shift Storage**: Shifts stored with `entityType: 'Shift'`, with assignments embedded in `shift.assignments[]` array
 
 **Shift Types**:
 - Day shift (8 AM - 4 PM)
@@ -827,6 +874,37 @@ Issued → Active → Expiring (30/60/90 day alerts) → Expired → Renewed
 - Night shift (12 AM - 8 AM)
 - On-call
 - Weekend coverage
+- Holiday
+
+**Shift Data Structure**:
+```javascript
+{
+  healthcare_id: Number,
+  entityType: 'Shift',
+  shift: {
+    shiftName: String,
+    shiftType: 'Day' | 'Night' | 'Evening' | ...,
+    startTime: String (HH:MM),
+    endTime: String (HH:MM),
+    overtimeRules: {
+      dailyThreshold: 8,
+      weeklyThreshold: 40,
+      overtimeRate: 1.5,
+      doubleTimeRate: 2.0
+    },
+    assignments: [{
+      employee_id: Number,
+      assignedDate: Date,
+      startTime: Date,
+      endTime: Date,
+      actualHours: Number,
+      overtimeHours: Number,
+      payrollCalculated: Boolean,
+      payrollAmount: Number
+    }]
+  }
+}
+```
 
 **Pay Multipliers**:
 ```javascript
@@ -835,47 +913,143 @@ const shiftRates = {
   'Evening': 1.1,
   'Night': 1.2,
   'On-call': 0.5,
-  'Weekend': 1.5
+  'Weekend': 1.5,
+  'Holiday': 2.0
 };
 
 pay = baseRate * shiftRates[shiftType] * hours;
 ```
+
+**Payroll Calculation**: Embedded assignment records track actual hours, overtime, and calculated payroll amounts
+
+---
+
+### Healthcare Onboarding Workflows
+
+**Workflow Storage**: Onboarding workflows stored with `entityType: 'Workflow'`, with employee statuses embedded in `workflow.onboardingStatuses[]`
+
+**Onboarding Structure**:
+```javascript
+{
+  healthcare_id: Number,
+  entityType: 'Workflow',
+  workflow: {
+    workflowName: String,
+    department: String,
+    position: String,
+    steps: [{ stepNumber, stepName, assignedTo, estimatedDays }],
+    onboardingStatuses: [{
+      employee_id: Number,
+      currentStep: Number,
+      status: 'Not Started' | 'In Progress' | 'Completed',
+      progress: Number (0-100),
+      completedSteps: [{ stepNumber, completedDate }],
+      documents: [{ documentName, documentPath, isVerified }]
+    }]
+  }
+}
+```
+
+**Healthcare-Specific Steps**:
+1. Credential verification
+2. HIPAA training completion
+3. Background check clearance
+4. Drug test results
+5. Clinical workflow assignment
+6. Policy acknowledgments
 
 ---
 
 ### HIPAA Compliance
 
 **Audit Requirements**:
-- All patient data access logged
+- All patient data access logged (stored with `entityType: 'Audit'`)
 - User authentication tracked
 - Data export logged
 - Policy changes audited
 - Access review quarterly
 
+**Audit Log Structure**:
+```javascript
+{
+  healthcare_id: Number,
+  entityType: 'Audit',
+  audit: {
+    user_id: Number,
+    action: String,
+    resource: String,
+    resourceId: String,
+    category: 'Patient Data Access' | 'Medical Records' | ...,
+    severity: 'Low' | 'Medium' | 'High' | 'Critical',
+    timestamp: Date,
+    isCompliant: Boolean
+  }
+}
+```
+
 **Access Controls**:
-- Role-based data access
-- Minimum necessary principle
-- Access revocation procedures
-- Training completion tracking
+- Role-based data access (defined in `entityType: 'Role'`)
+- Minimum necessary principle enforced
+- Access revocation procedures tracked
+- Training completion tracked in onboarding workflows
+- Policy acknowledgments stored in `policy.acknowledgments[]`
+
+**Policy Management**: HIPAA policies stored with `entityType: 'Policy'`, with acknowledgments tracked per employee
 
 ---
 
 ## Asset Management
 
+### Schema Architecture
+
+**Optimized Design**: The Asset Management module uses a **unified schema** with embedded subdocuments for better performance and data consistency. All asset-related data is stored in a single collection with embedded arrays for:
+- **history[]** - Complete audit trail of assignments, transfers, returns, maintenance, and disposal
+- **maintenanceSchedules[]** - Scheduled and completed maintenance records with vendor information and costs
+- **reports[]** - Lost/damaged reports with incident tracking and resolution status
+- **disposal** - Disposal records with documentation and approval workflow
+
+**Benefits**:
+- Single collection reduces complexity
+- Atomic operations for related data
+- Better query performance with embedded documents
+- Simplified maintenance with unified schema
+
+---
+
 ### Asset Registration
 
 **Business Rules**:
-- Unique asset code generated
-- Categories: IT, Furniture, Vehicles, etc.
+- Unique asset code auto-generated (AST-XXXXXX format)
+- Categories: IT Equipment, Furniture, Vehicles, Machinery, etc.
 - Initial status: Available
-- Warranty tracking
-- QR/barcode labels
+- Warranty tracking embedded in asset record
+- QR/barcode labels generated on registration
+- Purchase information (date, price, currency, supplier) required
 
 **Asset Lifecycle**:
 ```
-Registered → Available → Assigned → In Use → Returned → Disposed
-                           ↓
-                        Maintenance → Available
+Registered → Available → Assigned → In Use → Returned → Available
+                           ↓              ↓
+                    In Maintenance   Lost/Damaged
+                           ↓              ↓
+                       Available     Disposed/Retired
+```
+
+**Data Structure**:
+```javascript
+{
+  asset_id: Number,
+  assetCode: String (auto-generated),
+  organization_id: Number,
+  assetName: String,
+  category: Enum,
+  status: 'Available' | 'Assigned' | 'In Maintenance' | 'Lost' | 'Damaged' | 'Disposed',
+  assignedTo: { type, employee_id, department_id, assignedDate },
+  history: [{ action, from, to, actionDate, notes }],
+  maintenanceSchedules: [{ maintenanceType, scheduledDate, status, cost }],
+  reports: [{ reportType, description, status }],
+  disposal: { disposalType, disposalDate, status }
+}
 ```
 
 ---
@@ -889,10 +1063,27 @@ Registered → Available → Assigned → In Use → Returned → Disposed
 
 **Assignment Rules**:
 - Employee can have multiple assets
-- Assets tracked by employee_id
-- Assignment history maintained
-- Return condition verified
-- Transfer approval required
+- Assets tracked by employee_id or department_id
+- Assignment history automatically logged in `history[]` array
+- Return condition verified on return
+- Transfer approval required (logged in history)
+- Status automatically updated: Available → Assigned → Available
+
+**Assignment Workflow**:
+```javascript
+// Assignment creates history entry
+asset.history.push({
+  action: 'Assigned',
+  to: { type: 'Employee', employee_id: 123 },
+  actionDate: Date,
+  actionBy: user_id,
+  reason: String
+});
+
+// Status updated atomically
+asset.status = 'Assigned';
+asset.assignedTo = { type: 'Employee', employee_id: 123, assignedDate: Date };
+```
 
 ---
 
@@ -902,39 +1093,65 @@ Registered → Available → Assigned → In Use → Returned → Disposed
 - Preventive (scheduled)
 - Corrective (repairs)
 - Emergency (urgent)
+- Routine
+- Inspection
+
+**Maintenance Storage**: All maintenance schedules stored in `maintenanceSchedules[]` array within asset document
 
 **Workflow**:
 ```
 1. Schedule/Report Issue
+   → Added to maintenanceSchedules[]
    ↓
 2. Technician Assignment
+   → assignedTo field updated
    ↓
 3. Work Performed
+   → actualCost recorded
    ↓
 4. Cost Tracking
+   → estimatedCost vs actualCost
    ↓
 5. Completion & Verification
+   → status: Completed
+   → completedDate recorded
    ↓
 6. Asset Status Updated
+   → Status: Available (if preventive) or In Maintenance (if corrective)
 ```
+
+**Recurring Maintenance**: Supported via `isRecurring` flag and `recurringInterval` in days
 
 ---
 
 ### Depreciation Calculation
 
 **Methods Supported**:
-- Straight Line
+- Straight Line (default)
 - Declining Balance
 - Sum of Years
 - Units of Production
 
-**Straight Line Example**:
+**Depreciation Data**: Stored directly in asset document:
+```javascript
+depreciation: {
+  method: 'Straight Line',
+  usefulLife: 5, // years
+  residualValue: 0,
+  currentValue: calculated,
+  depreciationRate: calculated
+}
+```
+
+**Straight Line Calculation**:
 ```javascript
 // Annual depreciation
 annualDepreciation = (purchasePrice - residualValue) / usefulLife;
 
 // Current book value
+yearsElapsed = (currentDate - purchaseDate) / 365.25;
 bookValue = purchasePrice - (annualDepreciation * yearsElapsed);
+bookValue = Math.max(bookValue, residualValue);
 ```
 
 ---
@@ -947,13 +1164,17 @@ bookValue = purchasePrice - (annualDepreciation * yearsElapsed);
 - Recycling
 - Destruction
 - Trade-in
+- Lost
+- Stolen
 
 **Business Rules**:
 - Manager approval required
 - Finance approval for sales
-- Compliance documents
-- Capital gain/loss calculation
-- Asset write-off entry
+- Compliance documents stored in `disposal.documents[]`
+- Capital gain/loss calculated automatically
+- Asset write-off entry created in Finance module
+- Disposal information stored in `disposal` subdocument
+- History entry automatically created
 
 ---
 
@@ -1272,5 +1493,5 @@ The HRMS platform provides a comprehensive, enterprise-grade solution for human 
 **Last Updated**: 2025  
 **Total Modules**: 15  
 **Total APIs**: 170+  
-**Total Schemas**: 45+
+**Total Schemas**: 35+ (Optimized: Asset unified from 5 to 1, Healthcare unified from 9 to 1)
 
