@@ -9,16 +9,19 @@ Manage asset lifecycle from registration to disposal, track assignments, schedul
 ## File Structure
 ```
 asset/
-├── asset.schema.js        # Database models (5 schemas)
+├── asset.schema.js        # Optimized unified schema with embedded subdocuments
 ├── asset.service.js       # Business logic
 ├── asset.controller.js    # Request handlers
 ├── asset.routes.js        # API endpoints (18 endpoints)
 └── README.md              # This file
 ```
 
-## Schemas
+## Schema
 
-### Asset
+### Asset (Unified Schema)
+The asset module uses a single optimized schema with embedded subdocuments for better performance and simpler data management.
+
+**Main Fields:**
 - asset_id, organization_id
 - assetCode (auto-generated)
 - category (IT Equipment, Furniture, Vehicles, etc.)
@@ -29,29 +32,11 @@ asset/
 - depreciation calculations
 - QR/barcode support
 
-### AssetAssignmentHistory
-- Complete audit trail
-- Assignments, transfers, returns
-- Action tracking with dates
-- Condition notes
-
-### AssetMaintenanceSchedule
-- Scheduled maintenance
-- Maintenance types
-- Vendor information
-- Cost tracking
-- Recurring maintenance
-
-### AssetDisposal
-- Disposal types
-- Disposal records
-- Documentation
-- Approval workflow
-
-### AssetReport
-- Lost/damaged reports
-- Incident tracking
-- Resolution status
+**Embedded Subdocuments:**
+- **history[]** - Complete audit trail (assignments, transfers, returns, maintenance, disposal)
+- **maintenanceSchedules[]** - Scheduled maintenance with types, vendors, costs, recurring schedules
+- **reports[]** - Lost/damaged reports with incident tracking and resolution status
+- **disposal** - Disposal records with documentation and approval workflow
 
 ## Key Features (18 APIs)
 - Asset registration
