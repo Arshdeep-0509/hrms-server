@@ -1199,6 +1199,9 @@ const options = {
     './modules/leave/leave.routes.js',
     './modules/department/department.routes.js',
     './modules/helpdesk/helpdesk.routes.js',
+    './modules/asset/asset.routes.js',
+    './modules/expense/expense.routes.js',
+    './modules/healthcare/healthcare.routes.js',
   ],
 };
 

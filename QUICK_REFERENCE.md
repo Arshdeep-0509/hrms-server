@@ -9,7 +9,8 @@ module-name/
 ├── module-name.schema.js    # Database model (Mongoose)
 ├── module-name.service.js   # Business logic
 ├── module-name.controller.js # HTTP handlers
-└── module-name.routes.js    # API routes
+├── module-name.routes.js    # API routes
+└── README.md                # Module documentation
 ```
 
 ## Layer Responsibilities
@@ -41,6 +42,12 @@ const User = require('../user/user.schema');
 const { protect, authorize } = require('../../middleware/authMiddleware');
 ```
 
+### From Shared Models
+```javascript
+// In any schema file
+const Counter = require('../../models/counter.model');
+```
+
 ## Common Patterns
 
 ### 1. Service Method Pattern
@@ -50,7 +57,7 @@ class UserService {
   async methodName(params) {
     // Validation
     if (!params.required) {
-      throw { statusCode: 400, message: 'Required field missing' };
+      throw new Error('Required field missing');
     }
     
     // Business logic
@@ -58,11 +65,11 @@ class UserService {
     
     // Error handling
     if (!result) {
-      throw { statusCode: 404, message: 'Resource not found' };
+      throw new Error('Resource not found');
     }
     
     // Return data
-    return result;
+    return { success: true, data: result };
   }
 }
 
@@ -76,10 +83,12 @@ class UserController {
   async methodName(req, res) {
     try {
       const result = await userService.methodName(req.params);
-      res.json(result);
+      res.status(200).json(result);
     } catch (error) {
-      const statusCode = error.statusCode || 500;
-      res.status(statusCode).json({ message: error.message });
+      res.status(500).json({ 
+        success: false, 
+        message: error.message 
+      });
     }
   }
 }
@@ -112,6 +121,45 @@ router.delete('/:id',
 module.exports = router;
 ```
 
+### 4. Schema Pattern with Auto-Increment
+```javascript
+// user.schema.js
+const mongoose = require('mongoose');
+const Counter = require('../../models/counter.model');
+
+const UserSchema = new mongoose.Schema({
+  user_id: {
+    type: Number,
+    unique: true
+  },
+  // ... other fields
+}, { 
+  timestamps: true,
+  _id: false  // Disable default _id
+});
+
+// Pre-save hook for auto-incrementing ID
+UserSchema.pre('save', async function(next) {
+  if (this.isNew && !this.user_id) {
+    try {
+      const counter = await Counter.findByIdAndUpdate(
+        'user_id',
+        { $inc: { sequence_value: 1 } },
+        { new: true, upsert: true, lean: true }
+      );
+      this.user_id = counter.sequence_value;
+      next();
+    } catch (error) {
+      return next(error);
+    }
+  } else {
+    next();
+  }
+});
+
+module.exports = mongoose.model('User', UserSchema);
+```
+
 ## Adding a New Feature
 
 ### Example: Adding a "Department" Module
@@ -124,12 +172,49 @@ mkdir modules/department
 **Step 2**: Create schema (`department.schema.js`)
 ```javascript
 const mongoose = require('mongoose');
+const Counter = require('../../models/counter.model');
 
 const DepartmentSchema = new mongoose.Schema({
-  name: { type: String, required: true, unique: true },
-  description: String,
-  managerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
-}, { timestamps: true });
+  department_id: {
+    type: Number,
+    unique: true
+  },
+  organization_id: {
+    type: Number,
+    required: true,
+    ref: 'Organization'
+  },
+  name: { type: String, required: true, trim: true },
+  description: { type: String, trim: true },
+  manager: { type: Number, required: false },
+  budget: { type: Number, default: 0 },
+  status: { 
+    type: String, 
+    enum: ['Active', 'Inactive', 'Archived'],
+    default: 'Active'
+  }
+}, { 
+  timestamps: true,
+  _id: false
+});
+
+DepartmentSchema.pre('save', async function(next) {
+  if (this.isNew && !this.department_id) {
+    try {
+      const counter = await Counter.findByIdAndUpdate(
+        'department_id',
+        { $inc: { sequence_value: 1 } },
+        { new: true, upsert: true, lean: true }
+      );
+      this.department_id = counter.sequence_value;
+      next();
+    } catch (error) {
+      return next(error);
+    }
+  } else {
+    next();
+  }
+});
 
 module.exports = mongoose.model('Department', DepartmentSchema);
 ```
@@ -139,14 +224,19 @@ module.exports = mongoose.model('Department', DepartmentSchema);
 const Department = require('./department.schema');
 
 class DepartmentService {
-  async getAllDepartments() {
-    return await Department.find().populate('managerId', 'name email');
+  async getAllDepartments(organizationId) {
+    return await Department.find({ organization_id: organizationId })
+      .sort({ name: 1 })
+      .lean();
   }
 
   async createDepartment(data) {
-    const { name, description, managerId } = data;
-    const department = await Department.create({ name, description, managerId });
-    return { message: 'Department created successfully', department };
+    const department = await Department.create(data);
+    return { 
+      success: true, 
+      message: 'Department created successfully', 
+      department 
+    };
   }
   
   // Add more methods...
@@ -162,10 +252,18 @@ const departmentService = require('./department.service');
 class DepartmentController {
   async getAllDepartments(req, res) {
     try {
-      const departments = await departmentService.getAllDepartments();
-      res.json(departments);
+      const organizationId = req.user.organization_id;
+      const departments = await departmentService.getAllDepartments(organizationId);
+      res.status(200).json({
+        success: true,
+        departments,
+        total: departments.length
+      });
     } catch (error) {
-      res.status(error.statusCode || 500).json({ message: error.message });
+      res.status(500).json({ 
+        success: false, 
+        message: error.message 
+      });
     }
   }
 
@@ -174,7 +272,10 @@ class DepartmentController {
       const result = await departmentService.createDepartment(req.body);
       res.status(201).json(result);
     } catch (error) {
-      res.status(error.statusCode || 500).json({ message: error.message });
+      res.status(500).json({ 
+        success: false, 
+        message: error.message 
+      });
     }
   }
   
@@ -199,7 +300,7 @@ router.get('/',
 
 router.post('/', 
   protect, 
-  authorize(['Super Admin']), 
+  authorize(['Super Admin', 'Client Admin']), 
   departmentController.createDepartment.bind(departmentController)
 );
 
@@ -212,27 +313,45 @@ const departmentRoutes = require('./modules/department/department.routes');
 app.use('/api/departments', departmentRoutes);
 ```
 
+**Step 7**: Create README.md
+```markdown
+# Department Module
+
+## Overview
+Brief description...
+
+## Purpose
+Purpose of module...
+
+[Follow the pattern from other modules]
+```
+
 ## Existing Modules
 
-### Auth Module
-- **Purpose**: User authentication
-- **Routes**: `/api/auth/*`
-- **Key Methods**: `register`, `login`, `logout`
+### Core Modules
+- **Auth** - `/api/auth` - User authentication
+- **User** - `/api/users` - User profile management
+- **Role** - `/api/roles` - Role and permission management
+- **Organization** - `/api/organizations` - Client organization management
 
-### User Module
-- **Purpose**: User profile management
-- **Routes**: `/api/users/*`
-- **Key Methods**: `getUserProfile`, `updateUserProfile`, `deleteUser`
+### HR Management
+- **Employee** - `/api/employees` - Employee management
+- **Department** - `/api/departments` - Department management
+- **Recruitment** - `/api/recruitment` - Hiring and talent acquisition
 
-### Role Module
-- **Purpose**: Role and permission management
-- **Routes**: `/api/roles/*`
-- **Key Methods**: `getAllRolesAndPermissions`, `updateUserRole`, `modifyRoleAccess`
+### Time & Attendance
+- **Attendance** - `/api/attendance` - Time tracking
+- **Leave** - `/api/leave` - Leave management
 
-### Organization Module
-- **Purpose**: Client organization management
-- **Routes**: `/api/organizations/*`
-- **Key Methods**: `listOrganizations`, `createOrganization`, `configurePolicies`
+### Financial
+- **Payroll** - `/api/payroll` - Salary processing
+- **Finance** - `/api/finance` - Financial transactions
+- **Expense** - `/api/expense` - Expense claims
+
+### Specialized
+- **Healthcare** - `/api/healthcare` - Healthcare HR operations
+- **Helpdesk** - `/api/tickets` - IT support ticketing
+- **Asset** - `/api/assets` - Asset management
 
 ## Authorization Levels
 
@@ -263,27 +382,68 @@ router.delete('/:id',
 | 404 | Not Found | Resource doesn't exist |
 | 500 | Server Error | Unexpected server error |
 
-## Error Throwing Pattern
+## Error Handling Pattern
 
 ```javascript
 // In service layer
-throw { statusCode: 404, message: 'User not found' };
-throw { statusCode: 400, message: 'Invalid input data' };
-throw { statusCode: 403, message: 'Access denied' };
+try {
+  // business logic
+} catch (error) {
+  throw new Error('Descriptive error message');
+}
+
+// In controller layer
+try {
+  const result = await service.method();
+  res.status(200).json(result);
+} catch (error) {
+  res.status(500).json({ 
+    success: false, 
+    message: error.message 
+  });
+}
+```
+
+## ID Patterns
+
+### Numeric Auto-Increment IDs
+Used in: User, Role, Department, Employee, Leave, Expense, Asset, etc.
+
+```javascript
+// Generated via Counter model
+const counter = await Counter.findByIdAndUpdate(
+  'field_id',
+  { $inc: { sequence_value: 1 } },
+  { new: true, upsert: true, lean: true }
+);
+this.field_id = counter.sequence_value;
+```
+
+### Object IDs
+Used in: Organization, Mongoose refs
+
+```javascript
+// Standard MongoDB ObjectId
+organization: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: 'Organization'
+}
 ```
 
 ## Tips & Best Practices
 
 1. ✅ **Always use service layer** for business logic
 2. ✅ **Keep controllers thin** - just handle request/response
-3. ✅ **Throw structured errors** from services with statusCode
+3. ✅ **Throw descriptive errors** from services
 4. ✅ **Use async/await** consistently
 5. ✅ **Bind controller methods** when using in routes: `.bind(controller)`
 6. ✅ **Populate references** when needed: `.populate('field', 'name email')`
 7. ✅ **Validate inputs** in service layer before processing
 8. ✅ **Use meaningful variable names** and comments
 9. ✅ **Follow the existing naming conventions**
-10.✅ **Test thoroughly** after making changes
+10. ✅ **Test thoroughly** after making changes
+11. ✅ **Update documentation** when adding features
+12. ✅ **Use numeric IDs** where specified for consistency
 
 ## File Checklist for New Module
 
@@ -295,12 +455,33 @@ throw { statusCode: 403, message: 'Access denied' };
 - [ ] Export as singleton: `module.exports = new ClassName()`
 - [ ] Bind controller methods in routes: `.bind(controller)`
 - [ ] Register routes in `index.js`
+- [ ] Create `README.md` with module documentation
 - [ ] Test all endpoints
-- [ ] Update documentation if needed
+- [ ] Update main README if needed
+- [ ] Update PROJECT_STRUCTURE.md if needed
+- [ ] Update QUICK_REFERENCE.md if needed
 
 ## Need Help?
 
+- See `README.md` for project overview
 - See `PROJECT_STRUCTURE.md` for detailed architecture overview
-- See `MIGRATION_SUMMARY.md` for what changed during restructuring
 - Check existing modules for reference implementations
+- Each module has its own README with detailed information
 
+## Quick Access to Module Documentation
+
+- [Auth Module](./modules/auth/README.md)
+- [User Module](./modules/user/README.md)
+- [Role Module](./modules/role/README.md)
+- [Organization Module](./modules/organization/README.md)
+- [Employee Module](./modules/employee/README.md)
+- [Department Module](./modules/department/README.md)
+- [Attendance Module](./modules/attendance/README.md)
+- [Leave Module](./modules/leave/README.md)
+- [Payroll Module](./modules/payroll/README.md)
+- [Finance Module](./modules/finance/README.md)
+- [Expense Module](./modules/expense/README.md)
+- [Recruitment Module](./modules/recruitment/README.md)
+- [Healthcare Module](./modules/healthcare/README.md)
+- [Helpdesk Module](./modules/helpdesk/README.md)
+- [Asset Module](./modules/asset/README.md)
